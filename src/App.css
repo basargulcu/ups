@@ -134,14 +134,14 @@
   &--red    { background: #fc8181; }
 }
 
-.note-green  { background: #f0fff4; }
-.note-yellow { background: #fffff0; }
-.note-red    { background: #fff5f5; }
+.note-green  { background: #c6f6d5; }
+.note-yellow { background: #fefcbf; }
+.note-red    { background: #fed7d7; }
 
 @media (prefers-color-scheme: dark) {
-  .note-green  { background: #1a2e22; }
-  .note-yellow { background: #2d2a14; }
-  .note-red    { background: #2d1a1a; }
+  .note-green  { background: #22543d; }
+  .note-yellow { background: #5f4b00; }
+  .note-red    { background: #63171b; }
 }
 
 .note-text-wrapper {
@@ -209,14 +209,14 @@
   }
 }
 
-.subnote-green  { background: #f0fff4; }
-.subnote-yellow { background: #fffff0; }
-.subnote-red    { background: #fff5f5; }
+.subnote-green  { background: #c6f6d5; }
+.subnote-yellow { background: #fefcbf; }
+.subnote-red    { background: #fed7d7; }
 
 @media (prefers-color-scheme: dark) {
-  .subnote-green  { background: #1a2e22; }
-  .subnote-yellow { background: #2d2a14; }
-  .subnote-red    { background: #2d1a1a; }
+  .subnote-green  { background: #22543d; }
+  .subnote-yellow { background: #5f4b00; }
+  .subnote-red    { background: #63171b; }
 }
 
 .subnote-actions {
