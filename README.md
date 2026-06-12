@@ -1,16 +1,25 @@
-# React + Vite
+# UPS — Canvas Notes
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A canvas-based note-taking and dataops visualization tool. Paste text to create draggable note cards, draw arrows between them, and organize your thoughts visually.
 
-Currently, two official plugins are available:
+## Getting Started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The dev server runs on **port 3000** (configured in `vite.config.js`).
 
-## Expanding the ESLint configuration
+## Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **Paste** text to create note cards (one card per line for multi-line pastes)
+- **Drag** cards anywhere on the 4000px wide canvas
+- **Arrows** — click the `⟶` button on a card, then click a target to connect them. Shift-click multiple cards first to draw arrows from all of them at once. Click an arrow to delete it.
+- **Edit** note text via the `✎` button; saves on blur
+- **Subnotes** — expandable details on each card, editable by clicking the text
+- **Color status** — green / yellow / red dot buttons tint the card or subnote background
+- **Auto Arrange** — lays out connected cards in BFS layers; isolated cards are placed to the right
+- **Save / Load** — exports and imports canvas state as a JSON file

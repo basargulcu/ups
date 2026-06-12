@@ -463,6 +463,7 @@ export default function App() {
                       value={draft}
                       onChange={e => setDraft(e.target.value)}
                       onClick={e => e.stopPropagation()}
+                      onBlur={() => commitSubnote(box.id)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitSubnote(box.id) }
                         if (e.key === 'Escape') { setAddingTo(null); setDraft('') }
