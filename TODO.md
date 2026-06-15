@@ -1,2 +1,12 @@
 # TODO
-
+- scroll-bars for gods sake
+- horizontal re-arrange
+- custom save path
+- save overwrite
+- auto save
+- group move
+- maybe work with toggling for batch operations
+- delete button to delete the main note
+- make the color buttons show the color
+- set page title for multi tracking
+- url should reflect the file, so that reloading page does not clear the status
