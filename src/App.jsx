@@ -43,6 +43,7 @@ export default function App() {
   const [editingSubnote, setEditingSubnote] = useState(null) // { boxId, subnoteId }
   const [showStartup, setShowStartup] = useState(true)
   const [selectionRect, setSelectionRect] = useState(null)
+  const [expandedSubnotes, setExpandedSubnotes] = useState(new Set())
   const canvasRef = useRef(null)
   const loadInputRef = useRef(null)
   const draftRef = useRef(null)
@@ -128,6 +129,14 @@ export default function App() {
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
   }, [handlePaste])
+
+  useEffect(() => {
+    const down = (e) => { if (e.key === 'Meta') document.body.classList.add('cmd-down') }
+    const up = (e) => { if (e.key === 'Meta') document.body.classList.remove('cmd-down') }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+  }, [])
 
 
   useEffect(() => {
@@ -648,7 +657,11 @@ export default function App() {
               {(subnotes.length > 0 || isAdding) && (
                 <div className="subnotes">
                   {subnotes.map(s => (
-                    <div key={s.id} className={`subnote${s.color ? ` subnote-${s.color}` : ''}`}>
+                    <div key={s.id} className={`subnote${s.color ? ` subnote-${s.color}` : ''}${expandedSubnotes.has(s.id) ? ' is-expanded' : ''}`}>
+                      <button
+                        className="subnote-toggle"
+                        onClick={(e) => { e.stopPropagation(); setExpandedSubnotes(prev => { const n = new Set(prev); n.has(s.id) ? n.delete(s.id) : n.add(s.id); return n }) }}
+                      >{expandedSubnotes.has(s.id) ? '▾' : '▸'}</button>
                       {editingSubnote?.subnoteId === s.id ? (
                         <textarea
                           ref={subnoteEditRef}

@@ -3,7 +3,12 @@
     {
       "id": 1,
       "text": "pasted",
-      "subnotes": [],
+      "subnotes": [
+        {
+          "id": 4,
+          "text": "https://www.reddit.com/r/wine_gaming/comments/ov1vom/crossover_bottle_keeps_expiring/"
+        }
+      ],
       "color": null
     },
     {
@@ -82,5 +87,5 @@
   ],
   "idCounter": 11,
   "arrowCounter": 8,
-  "subnoteCounter": 2
+  "subnoteCounter": 4
 }

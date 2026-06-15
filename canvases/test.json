@@ -9,7 +9,16 @@
     {
       "id": 2,
       "text": "pasted",
-      "subnotes": [],
+      "subnotes": [
+        {
+          "id": 2,
+          "text": "https://console.cloud.google.com/artifacts/docker/project-6a0dfdd8-e357-46b7-9b5/europe-west4/bartos-image-repo/straw-hats?project=project-6a0dfdd8-e357-46b7-9b5"
+        },
+        {
+          "id": 4,
+          "text": "dsadsa"
+        }
+      ],
       "color": null
     },
     {
@@ -55,8 +64,8 @@
       "y": 94
     },
     "2": {
-      "x": 637,
-      "y": 222
+      "x": 934,
+      "y": 263
     },
     "3": {
       "x": 88,
@@ -92,5 +101,5 @@
   ],
   "idCounter": 12,
   "arrowCounter": 2,
-  "subnoteCounter": 0
+  "subnoteCounter": 4
 }
