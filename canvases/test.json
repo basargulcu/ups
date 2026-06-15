@@ -1,0 +1,96 @@
+{
+  "boxes": [
+    {
+      "id": 1,
+      "text": "n the 4",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 2,
+      "text": "pasted",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 3,
+      "text": "- ~~scroll-bars for gods sake~~",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 4,
+      "text": "- ~~horizontal re-arrange~~",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 5,
+      "text": "- ~~custom save path~~",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 6,
+      "text": "- ~~save overwrite~~",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 7,
+      "text": "- ~~auto save~~",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 8,
+      "text": "- ~~group move~~",
+      "subnotes": [],
+      "color": null
+    }
+  ],
+  "positions": {
+    "1": {
+      "x": 928,
+      "y": 94
+    },
+    "2": {
+      "x": 637,
+      "y": 222
+    },
+    "3": {
+      "x": 88,
+      "y": 88
+    },
+    "4": {
+      "x": 112,
+      "y": 112
+    },
+    "5": {
+      "x": 454,
+      "y": 417
+    },
+    "6": {
+      "x": 478,
+      "y": 441
+    },
+    "7": {
+      "x": 721,
+      "y": 468
+    },
+    "8": {
+      "x": 526,
+      "y": 489
+    }
+  },
+  "arrows": [
+    {
+      "id": 1,
+      "fromId": 2,
+      "toId": 1
+    }
+  ],
+  "idCounter": 12,
+  "arrowCounter": 2,
+  "subnoteCounter": 0
+}

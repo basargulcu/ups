@@ -6,6 +6,31 @@ let idCounter = 0
 let arrowCounter = 0
 let subnoteCounter = 0
 
+const URL_RE = /https?:\/\/[^\s]+/g
+
+function renderWithLinks(text) {
+  const parts = []
+  let last = 0
+  let m
+  URL_RE.lastIndex = 0
+  while ((m = URL_RE.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index))
+    const url = m[0]
+    parts.push(
+      <a
+        key={m.index}
+        href={url}
+        title="⌘+Click to open"
+        onClick={e => { if (e.metaKey) { e.stopPropagation(); window.open(url, '_blank') } else { e.preventDefault() } }}
+        className="text-link"
+      >{url}</a>
+    )
+    last = m.index + url.length
+  }
+  if (last < text.length) parts.push(text.slice(last))
+  return parts
+}
+
 export default function App() {
   const [boxes, setBoxes] = useState([])
   const [positions, setPositions] = useState({})
@@ -16,11 +41,16 @@ export default function App() {
   const [draft, setDraft] = useState('')
   const [editingNote, setEditingNote] = useState(null)
   const [editingSubnote, setEditingSubnote] = useState(null) // { boxId, subnoteId }
+  const [showStartup, setShowStartup] = useState(true)
+  const [selectionRect, setSelectionRect] = useState(null)
   const canvasRef = useRef(null)
   const loadInputRef = useRef(null)
   const draftRef = useRef(null)
+  const fileHandleRef = useRef(null)
   const editRef = useRef(null)
   const subnoteEditRef = useRef(null)
+  const wasDraggedRef = useRef(false)
+  const suppressCanvasClickRef = useRef(false)
 
   const handlePaste = useCallback((e) => {
     if (addingTo || editingNote || editingSubnote) return
@@ -43,25 +73,62 @@ export default function App() {
     setPositions(prev => ({ ...prev, ...newPositions }))
   }, [addingTo, editingNote, editingSubnote])
 
+  const applyCanvasData = useCallback((data) => {
+    idCounter = data.idCounter ?? 0
+    arrowCounter = data.arrowCounter ?? 0
+    subnoteCounter = data.subnoteCounter ?? 0
+    setBoxes(data.boxes.map(b => ({ ...b, subnotes: b.subnotes ?? [], color: b.color ?? null, nodeRef: createRef() })))
+    setPositions(data.positions ?? {})
+    setArrows(data.arrows ?? [])
+    setConnecting(null)
+    setAddingTo(null)
+  }, [])
+
+  const setFileHandle = useCallback((handle) => {
+    fileHandleRef.current = handle
+    document.title = handle.name
+    const url = new URL(window.location)
+    url.searchParams.set('file', handle.name)
+    history.replaceState(null, '', url)
+  }, [])
+
+  const handleStartupOpen = useCallback(async () => {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        multiple: false,
+      })
+      setFileHandle(handle)
+      const file = await handle.getFile()
+      applyCanvasData(JSON.parse(await file.text()))
+    } catch (e) {
+      if (e.name !== 'AbortError') throw e
+      return
+    }
+    setShowStartup(false)
+  }, [applyCanvasData, setFileHandle])
+
+  const handleStartupNew = useCallback(async () => {
+    const params = new URLSearchParams(window.location.search)
+    const fileName = params.get('file')
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fileName ?? 'canvas.json',
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+      })
+      setFileHandle(handle)
+    } catch (e) {
+      if (e.name !== 'AbortError') throw e
+      return
+    }
+    setShowStartup(false)
+  }, [setFileHandle])
+
   useEffect(() => {
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
   }, [handlePaste])
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setConnecting(null)
-        setSelectedBoxes(new Set())
-        setAddingTo(null)
-        setDraft('')
-        setEditingNote(null)
-        setEditingSubnote(null)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
 
   useEffect(() => {
     if (addingTo && draftRef.current) draftRef.current.focus()
@@ -124,8 +191,23 @@ export default function App() {
   }, [])
 
   const handleDrag = useCallback((id, data) => {
-    setPositions(prev => ({ ...prev, [id]: { x: data.x, y: data.y } }))
-  }, [])
+    wasDraggedRef.current = true
+    setPositions(prev => {
+      const old = prev[id] ?? { x: 0, y: 0 }
+      const dx = data.x - old.x
+      const dy = data.y - old.y
+      const next = { ...prev, [id]: { x: data.x, y: data.y } }
+      if (selectedBoxes.has(id)) {
+        selectedBoxes.forEach(otherId => {
+          if (otherId !== id) {
+            const op = prev[otherId] ?? { x: 0, y: 0 }
+            next[otherId] = { x: op.x + dx, y: op.y + dy }
+          }
+        })
+      }
+      return next
+    })
+  }, [selectedBoxes])
 
   const startConnecting = useCallback((e, id) => {
     e.stopPropagation()
@@ -133,6 +215,7 @@ export default function App() {
   }, [])
 
   const handleNoteClick = useCallback((e, id) => {
+    if (wasDraggedRef.current) { wasDraggedRef.current = false; e.stopPropagation(); return }
     if (e.shiftKey) {
       e.stopPropagation()
       setSelectedBoxes(prev => {
@@ -202,11 +285,54 @@ export default function App() {
     ))
   }, [])
 
+  const handleCanvasMouseDown = useCallback((e) => {
+    if (e.target !== canvasRef.current) return
+    if (connecting) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    setSelectionRect({ startX: x, startY: y, currentX: x, currentY: y })
+  }, [connecting])
+
+  const handleCanvasMouseMove = useCallback((e) => {
+    if (!selectionRect) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    setSelectionRect(prev => prev ? { ...prev, currentX: x, currentY: y } : null)
+  }, [selectionRect])
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (!selectionRect) return
+    const { startX, startY, currentX, currentY } = selectionRect
+    const left = Math.min(startX, currentX)
+    const top = Math.min(startY, currentY)
+    const right = Math.max(startX, currentX)
+    const bottom = Math.max(startY, currentY)
+    if (right - left > 5 || bottom - top > 5) {
+      const selected = new Set()
+      boxes.forEach(box => {
+        const pos = positions[box.id] ?? { x: 0, y: 0 }
+        const el = box.nodeRef?.current
+        const w = el ? el.offsetWidth : 200
+        const h = el ? el.offsetHeight : 80
+        if (pos.x < right && pos.x + w > left && pos.y < bottom && pos.y + h > top) {
+          selected.add(box.id)
+        }
+      })
+      if (selected.size > 0) {
+        setSelectedBoxes(selected)
+        suppressCanvasClickRef.current = true
+      }
+    }
+    setSelectionRect(null)
+  }, [selectionRect, boxes, positions])
+
   const handleAutoArrange = useCallback(() => {
     if (boxes.length === 0) return
 
-    const H_GAP = 40
-    const V_GAP = 60
+    const H_GAP = 60
+    const V_GAP = 40
     const START_X = 60
     const START_Y = 60
 
@@ -221,10 +347,10 @@ export default function App() {
       }
     })
 
-    // BFS layer assignment (Kahn's), sort within each wave by current X to preserve order
+    // BFS layer assignment (Kahn's), sort within each wave by current Y to preserve top-to-bottom order
     const layerOf = {}
     let wave = boxes.filter(b => inDeg[b.id] === 0).map(b => b.id)
-    wave.sort((a, b) => (positions[a]?.x ?? 0) - (positions[b]?.x ?? 0))
+    wave.sort((a, b) => (positions[a]?.y ?? 0) - (positions[b]?.y ?? 0))
 
     let depth = 0
     while (wave.length > 0) {
@@ -235,7 +361,7 @@ export default function App() {
           if (--inDeg[toId] === 0) next.push(toId)
         })
       })
-      next.sort((a, b) => (positions[a]?.x ?? 0) - (positions[b]?.x ?? 0))
+      next.sort((a, b) => (positions[a]?.y ?? 0) - (positions[b]?.y ?? 0))
       wave = next
       depth++
     }
@@ -254,93 +380,177 @@ export default function App() {
       byLayer[l].push(b.id)
     })
 
-    // Lay out connected group, track rightmost edge
+    // Lay out connected group: each layer is a column, nodes stack vertically within it
     const newPositions = {}
     const sortedLayers = Object.keys(byLayer).map(Number).sort((a, b) => a - b)
-    let groupMaxX = START_X
-    let y = START_Y
+    let x = START_X
 
     sortedLayers.forEach(layerNum => {
       const ids = byLayer[layerNum]
-      let x = START_X
-      let maxH = 0
+      let y = START_Y
+      let maxW = 0
       ids.forEach(id => {
         const box = boxes.find(b => b.id === id)
         const el = box?.nodeRef?.current
         const w = el ? el.offsetWidth : 200
         const h = el ? el.offsetHeight : 80
         newPositions[id] = { x, y }
-        x += w + H_GAP
-        maxH = Math.max(maxH, h)
-        groupMaxX = Math.max(groupMaxX, x)
+        y += h + V_GAP
+        maxW = Math.max(maxW, w)
       })
-      y += maxH + V_GAP
+      x += maxW + H_GAP
     })
 
     // Place isolated notes in a column to the right of the connected group
-    const isolatedX = groupMaxX + H_GAP * 2
     let iy = START_Y
     boxes.forEach(b => {
       if (connectedIds.has(b.id)) return
       const el = b.nodeRef?.current
       const h = el ? el.offsetHeight : 80
-      newPositions[b.id] = { x: isolatedX, y: iy }
+      newPositions[b.id] = { x, y: iy }
       iy += h + V_GAP
     })
 
     setPositions(prev => ({ ...prev, ...newPositions }))
   }, [boxes, arrows, positions])
 
-  const handleSave = useCallback(() => {
-    const data = {
-      boxes: boxes.map(b => ({ id: b.id, text: b.text, subnotes: b.subnotes ?? [], color: b.color ?? null })),
-      positions,
-      arrows,
-      idCounter,
-      arrowCounter,
-      subnoteCounter,
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'canvas.json'
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [boxes, positions, arrows])
+  const buildSaveData = useCallback(() => ({
+    boxes: boxes.map(b => ({ id: b.id, text: b.text, subnotes: b.subnotes ?? [], color: b.color ?? null })),
+    positions,
+    arrows,
+    idCounter,
+    arrowCounter,
+    subnoteCounter,
+  }), [boxes, positions, arrows])
 
-  const handleLoad = useCallback((e) => {
+  const writeToHandle = useCallback(async (handle, json) => {
+    const writable = await handle.createWritable()
+    await writable.write(json)
+    await writable.close()
+  }, [])
+
+  const handleSave = useCallback(async () => {
+    const json = JSON.stringify(buildSaveData(), null, 2)
+
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = fileHandleRef.current ?? await window.showSaveFilePicker({
+          suggestedName: 'canvas.json',
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        })
+        fileHandleRef.current = handle
+        await writeToHandle(handle, json)
+      } catch (e) {
+        if (e.name !== 'AbortError') throw e
+      }
+    } else {
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'canvas.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  }, [boxes, positions, arrows, buildSaveData, writeToHandle])
+
+  useEffect(() => {
+    const id = setInterval(async () => {
+      if (!fileHandleRef.current) return
+      try {
+        await writeToHandle(fileHandleRef.current, JSON.stringify(buildSaveData(), null, 2))
+      } catch {}
+    }, 30000)
+    return () => clearInterval(id)
+  }, [buildSaveData, writeToHandle])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setConnecting(null)
+        setSelectedBoxes(new Set())
+        setAddingTo(null)
+        setDraft('')
+        setEditingNote(null)
+        setEditingSubnote(null)
+      }
+      if (e.key === 's' && e.metaKey) {
+        e.preventDefault()
+        handleSave()
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBoxes.size > 0) {
+        const active = document.activeElement
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
+        selectedBoxes.forEach(id => removeBox(id))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedBoxes, removeBox, handleSave])
+
+  const handleLoad = useCallback(async () => {
+    if (window.showOpenFilePicker) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+          multiple: false,
+        })
+        setFileHandle(handle)
+        const file = await handle.getFile()
+        applyCanvasData(JSON.parse(await file.text()))
+      } catch (e) {
+        if (e.name !== 'AbortError') throw e
+      }
+    } else {
+      loadInputRef.current.click()
+    }
+  }, [applyCanvasData, setFileHandle])
+
+  const handleLoadFallback = useCallback((e) => {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result)
-        idCounter = data.idCounter ?? 0
-        arrowCounter = data.arrowCounter ?? 0
-        subnoteCounter = data.subnoteCounter ?? 0
-        setBoxes(data.boxes.map(b => ({ ...b, subnotes: b.subnotes ?? [], color: b.color ?? null, nodeRef: createRef() })))
-        setPositions(data.positions ?? {})
-        setArrows(data.arrows ?? [])
-        setConnecting(null)
-        setAddingTo(null)
-      } catch {}
+      try { applyCanvasData(JSON.parse(ev.target.result)) } catch {}
     }
     reader.readAsText(file)
     e.target.value = ''
-  }, [])
+  }, [applyCanvasData])
+
+  if (showStartup) {
+    const hasFileParam = !!new URLSearchParams(window.location.search).get('file')
+    return (
+      <div className="startup-overlay">
+        <div className="startup-dialog">
+          <h2>Canvas Notes</h2>
+          <p>Open an existing canvas or create a new one.</p>
+          <div className="startup-actions">
+            <button className="toolbar-btn" onClick={handleStartupOpen}>Open file…</button>
+            <button className="toolbar-btn" onClick={handleStartupNew}>{hasFileParam ? 'Create new…' : 'New canvas…'}</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
       ref={canvasRef}
       className={`canvas${connecting ? ' is-connecting' : ''}`}
-      onClick={() => { setConnecting(null); setSelectedBoxes(new Set()) }}
+      onMouseDown={handleCanvasMouseDown}
+      onMouseMove={handleCanvasMouseMove}
+      onMouseUp={handleCanvasMouseUp}
+      onClick={() => {
+        if (suppressCanvasClickRef.current) { suppressCanvasClickRef.current = false; return }
+        setConnecting(null)
+        setSelectedBoxes(new Set())
+      }}
     >
       <div className="toolbar" onClick={e => e.stopPropagation()}>
         <button className="toolbar-btn" onClick={handleSave}>Save</button>
-        <button className="toolbar-btn" onClick={() => loadInputRef.current.click()}>Load</button>
+        <button className="toolbar-btn" onClick={handleLoad}>Load</button>
         <button className="toolbar-btn" onClick={handleAutoArrange}>Auto Arrange</button>
-        <input ref={loadInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleLoad} />
+        <input ref={loadInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleLoadFallback} />
       </div>
 
       <svg className="arrows">
@@ -364,6 +574,18 @@ export default function App() {
       {boxes.length === 0 && (
         <div className="hint">Paste text (Ctrl+V / ⌘V) to create a note</div>
       )}
+
+      {selectionRect && (() => {
+        const { startX, startY, currentX, currentY } = selectionRect
+        return (
+          <div className="rubber-band" style={{
+            left: Math.min(startX, currentX),
+            top: Math.min(startY, currentY),
+            width: Math.abs(currentX - startX),
+            height: Math.abs(currentY - startY),
+          }} />
+        )
+      })()}
 
       {boxes.map(box => {
         const pos = positions[box.id] ?? { x: 0, y: 0 }
@@ -409,7 +631,7 @@ export default function App() {
               </div>
 
               <div className={`note-text-wrapper${editingNote === box.id ? ' is-editing' : ''}`}>
-                <pre className="note-text">{box.text}</pre>
+                <pre className="note-text">{renderWithLinks(box.text)}</pre>
                 <textarea
                   ref={editRef}
                   className="note-edit"
@@ -441,7 +663,7 @@ export default function App() {
                       ) : (
                         <span
                           onClick={(e) => { e.stopPropagation(); setEditingSubnote({ boxId: box.id, subnoteId: s.id }) }}
-                        >{s.text}</span>
+                        >{renderWithLinks(s.text)}</span>
                       )}
                       <div className="subnote-actions" onClick={e => e.stopPropagation()}>
                         {['green', 'yellow', 'red'].map(c => (

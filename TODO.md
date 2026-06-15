@@ -1,12 +1,12 @@
 # TODO
-- scroll-bars for gods sake
-- horizontal re-arrange
-- custom save path
-- save overwrite
-- auto save
-- group move
-- maybe work with toggling for batch operations
-- delete button to delete the main note
-- make the color buttons show the color
-- set page title for multi tracking
-- url should reflect the file, so that reloading page does not clear the status
+- ~~scroll-bars for gods sake~~
+- ~~horizontal re-arrange~~
+- ~~custom save path~~
+- ~~save overwrite~~
+- ~~auto save~~
+- ~~group move~~
+- ~~delete button to delete the main note~~
+- ~~make the color buttons show the color~~
+- ~~set page title for multi tracking~~
+- ~~url should reflect the file, so that reloading page does not clear the status~~
+- ~~The links pasted to the notes/subnotes are not clickable. I would like to be able to click them if the command button is down. So cmd+click should open the url, if it is a url~~

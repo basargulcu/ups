@@ -1,0 +1,86 @@
+{
+  "boxes": [
+    {
+      "id": 1,
+      "text": "pasted",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 8,
+      "text": "- ~~delete button to delete the main note~~",
+      "subnotes": [
+        {
+          "id": 2,
+          "text": "dsadsa"
+        }
+      ],
+      "color": null
+    },
+    {
+      "id": 9,
+      "text": "- ~~make the color buttons show the color~~",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 10,
+      "text": "- ~~set page title for multi tracking~~",
+      "subnotes": [],
+      "color": null
+    },
+    {
+      "id": 11,
+      "text": "- ~~url should reflect the file, so that reloading page does not clear",
+      "subnotes": [],
+      "color": null
+    }
+  ],
+  "positions": {
+    "1": {
+      "x": 522,
+      "y": 60
+    },
+    "8": {
+      "x": 61,
+      "y": 52
+    },
+    "9": {
+      "x": 60,
+      "y": 189
+    },
+    "10": {
+      "x": 60,
+      "y": 318
+    },
+    "11": {
+      "x": 60,
+      "y": 447
+    }
+  },
+  "arrows": [
+    {
+      "id": 1,
+      "fromId": 8,
+      "toId": 1
+    },
+    {
+      "id": 2,
+      "fromId": 9,
+      "toId": 1
+    },
+    {
+      "id": 3,
+      "fromId": 10,
+      "toId": 1
+    },
+    {
+      "id": 4,
+      "fromId": 11,
+      "toId": 1
+    }
+  ],
+  "idCounter": 11,
+  "arrowCounter": 8,
+  "subnoteCounter": 2
+}
