@@ -42,6 +42,7 @@ export default function App() {
   const [editingNote, setEditingNote] = useState(null)
   const [editingSubnote, setEditingSubnote] = useState(null) // { boxId, subnoteId }
   const [showStartup, setShowStartup] = useState(true)
+  const [backendDown, setBackendDown] = useState(false)
   const [selectionRect, setSelectionRect] = useState(null)
   const [expandedSubnotes, setExpandedSubnotes] = useState(new Set())
   const canvasRef = useRef(null)
@@ -52,6 +53,7 @@ export default function App() {
   const subnoteEditRef = useRef(null)
   const wasDraggedRef = useRef(false)
   const suppressCanvasClickRef = useRef(false)
+  const backendFileRef = useRef(null)
 
   const handlePaste = useCallback((e) => {
     if (addingTo || editingNote || editingSubnote) return
@@ -124,6 +126,25 @@ export default function App() {
     }
     setShowStartup(false)
   }, [setFileHandle])
+
+  useEffect(() => {
+    fetch('/api/health').catch(() => setBackendDown(true))
+  }, [])
+
+  useEffect(() => {
+    const fileName = new URLSearchParams(window.location.search).get('file')
+    if (!fileName) return
+    fetch(`/api/file?name=${encodeURIComponent(fileName)}`)
+      .then(r => { if (!r.ok) return null; return r.json() })
+      .then(data => {
+        if (!data) return
+        backendFileRef.current = fileName
+        document.title = fileName
+        applyCanvasData(data)
+        setShowStartup(false)
+      })
+      .catch(() => {})
+  }, [applyCanvasData])
 
   useEffect(() => {
     window.addEventListener('paste', handlePaste)
@@ -441,6 +462,15 @@ export default function App() {
   const handleSave = useCallback(async () => {
     const json = JSON.stringify(buildSaveData(), null, 2)
 
+    if (backendFileRef.current) {
+      await fetch(`/api/file?name=${encodeURIComponent(backendFileRef.current)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: json,
+      })
+      return
+    }
+
     if (window.showSaveFilePicker) {
       try {
         const handle = fileHandleRef.current ?? await window.showSaveFilePicker({
@@ -465,9 +495,18 @@ export default function App() {
 
   useEffect(() => {
     const id = setInterval(async () => {
+      const json = JSON.stringify(buildSaveData(), null, 2)
+      if (backendFileRef.current) {
+        fetch(`/api/file?name=${encodeURIComponent(backendFileRef.current)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: json,
+        }).catch(() => {})
+        return
+      }
       if (!fileHandleRef.current) return
       try {
-        await writeToHandle(fileHandleRef.current, JSON.stringify(buildSaveData(), null, 2))
+        await writeToHandle(fileHandleRef.current, json)
       } catch {}
     }, 30000)
     return () => clearInterval(id)
@@ -525,6 +564,22 @@ export default function App() {
     reader.readAsText(file)
     e.target.value = ''
   }, [applyCanvasData])
+
+  if (backendDown) {
+    return (
+      <div className="startup-overlay">
+        <div className="startup-dialog">
+          <h2>Backend not running</h2>
+          <p>Start the backend server first:</p>
+          <pre style={{ textAlign: 'left', background: '#1a1a1a', padding: '12px', borderRadius: '6px', fontSize: '13px' }}>
+{`cd backend
+uv run uvicorn main:app --reload`}
+          </pre>
+          <p style={{ fontSize: '13px', opacity: 0.6 }}>Then refresh this page.</p>
+        </div>
+      </div>
+    )
+  }
 
   if (showStartup) {
     const hasFileParam = !!new URLSearchParams(window.location.search).get('file')

@@ -2,16 +2,30 @@
 
 A canvas-based note-taking and dataops visualization tool. Paste text to create draggable note cards, draw arrows between them, and organize your thoughts visually.
 
+## Project Structure
+
+```
+ups/
+├── frontend/    # React app (Vite)
+└── backend/     # Python API server
+```
+
 ## Getting Started
 
+**1. Backend** (port 8000) — start this first:
 ```bash
+cd backend
+uv run uvicorn main:app --reload
+```
+
+**2. Frontend** (port 3000):
+```bash
+cd frontend
 npm install
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-The dev server runs on **port 3000** (configured in `vite.config.js`).
 
 ## Features
 
