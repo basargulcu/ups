@@ -10,3 +10,5 @@
 - ~~set page title for multi tracking~~
 - ~~url should reflect the file, so that reloading page does not clear the status~~
 - ~~The links pasted to the notes/subnotes are not clickable. I would like to be able to click them if the command button is down. So cmd+click should open the url, if it is a url~~
+- Generate summary feature to export a list of Assets and backfills
+- Auto tagging backfills and Asset links
